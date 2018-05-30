@@ -1,0 +1,108 @@
+---
+title: "Practical Machine Learning Course project"
+author: "Shreya Malik"
+date: "May 29, 2018"
+output: html_document
+---
+
+Project Introduction
+Using the training and testing data that was available at locations mentioned in the project, the goal was to predict the manner in which a person exercised. The variable to be predicted is the 'classe' variable in the training set, which indicates the level of the manner of exercise. There are alot of predictor varaibles present in the training set (as well as the testing set) which can be used for the purpose prediction.
+
+
+Step 1: I am loading the caret library. As and when I will need other libraries I will load accordingly
+
+```{r}
+library(caret)
+```
+
+Step 2: I have copied the datasets on my system. The below code picks the files from the location specified and transfers into Training and Testing datasets
+
+```{r}
+Training <- read.csv(file="C:/Users/Smali56/Desktop/pml-training.csv",header=TRUE,sep=",")
+dim(Training)
+Testing <- read.csv(file="C:/Users/Smali56/Desktop/pml-testing.csv",header=TRUE,sep=",")
+dim(Testing)
+```
+
+Step 3: Using the createDataPartition function in caret I am partitioning my Training dataset into two parts. 60% of the data will be used to train the program and on the rest of the 40% I will apply the model to check out of sample accuracy.
+
+```{r}
+inTrain <- createDataPartition(y=Training$classe, p=0.6, list=FALSE)
+myTraining <- Training[inTrain, ]
+dim(myTraining)
+myTesting <- Training[-inTrain, ]
+dim(myTesting)
+```
+
+Step4:When I printed the first few rows of the dataset I see that there are a number of variables that take alot of null values. This indicates the requirement of cleaning the dataset. 
+The below code cleans the dataset by following the below processing steps:
+a) removing variables which have no varaince at all
+b) Removing varaibles that have over 95% of values as NA
+c) The first 5 varaibles of the dataset are just identifying the person and teh time. These variables are skewing my results hence remove these 5 variables
+
+Please note that we are applying all above steps to both training ( both parts) and testing datasets (validation data) 
+
+```{r}
+# Remove variables with non zero variance
+NZV <-nearZeroVar(myTraining)
+TrainSet <-myTraining[,-NZV]
+TestSet <-myTesting[,-NZV]
+Testing <- Testing [,-NZV]
+dim(TrainSet)
+dim(TestSet)
+dim(Testing)
+# Remove variables with NA 95% of the times
+AllNA <-sapply(TrainSet,function(x) mean(is.na(x)))>0.95
+TrainSet <- TrainSet[,AllNA==FALSE]
+TestSet<- TestSet[,AllNA==FALSE]
+Testing<- Testing[,AllNA==FALSE]
+dim(TrainSet)
+dim(TestSet)
+dim(Testing)
+# Remove first 5 identification variables as they were skewing with the results
+TrainSet2 <- TrainSet[, -(1:5)]
+TestSet2  <- TestSet[, -(1:5)]
+Testing <- Testing[, -(1:5)]
+dim(TrainSet2)
+dim(TestSet2)
+dim(Testing)
+
+```
+
+
+As a next step I did try doing pre-processing on the above datasets, however I when ran my models on the preprocessed dataset my accuracy reduced compared to what it is without pre processing.
+
+Step6: I have chosen to run random forest and decision tree decisioning models to predict the classe values of the testing dataset.
+
+a) Apply Random Forest
+
+```{r}
+library(randomForest)
+modFitrf <- randomForest(classe ~. , data=TrainSet2)
+predictionrf <- predict(modFitrf, TestSet2, type = "class")
+confusionMatrix(predictionrf, TestSet2$classe)
+```
+
+
+b) Apply decision tree
+
+```{r}
+library(rpart)
+modFitrpart <- rpart(classe ~ ., data=TrainSet2, method="class")
+predictionrpart <- predict(modFitrpart, TestSet2, type = "class")
+confusionMatrix(predictionrpart, TestSet2$classe)
+```
+
+
+From the above two methods we see that we get that random forest shows way more accuracy compared to decision trees.
+Random Forest Accuracy ~0.99
+Decision Trees Accurcy ~0.72
+
+Step7: Apply the best model on the testing dataset that is provided to predict the values of classe.
+Below is our prediction:
+
+```{r}
+predictionB2 <- predict(modFitrf, Testing, type = "class")
+predictionB2
+```
+
